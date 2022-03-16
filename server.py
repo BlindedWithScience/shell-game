@@ -119,21 +119,21 @@ app = Flask(__name__)
 
 @app.route("/register")
 def register():
-    data = request.get_json()
+    data = json.loads(request.get_data().decode())
     session_id = manager.register(data["username"], data["password"])
-    return json.dumps({"result": session_id is not None, "session_id": session_id})
+    return session_id
 
 
 @app.route("/login")
 def login():
-    data = request.get_json()
+    data = json.loads(request.get_data().decode())
     session_id = manager.login(data["username"], data["password"])
-    return json.dumps({"result": session_id is not None, "session_id": session_id})
+    return session_id
 
 
 @app.route("/game")
 def game():
-    data = request.get_json()
+    data = json.loads(request.get_data().decode())
     if data["guess"] != rand.randint(1, 3):
         data["stake"] *= -1
     return json.dumps(manager.change_score(data["session_id"], data["stake"]))
@@ -141,9 +141,9 @@ def game():
 
 @app.route("/info")
 def info():
-    session_id = request.get_json()
+    session_id = request.get_data().decode()
     info = manager.get_info(session_id)
-    return json.dumps({"result": info is not None, "info": info})
+    return info
 
 
 @app.route("/leaderboard")
@@ -153,5 +153,5 @@ def leaderboard():
 
 @app.route("/exit")
 def exit():
-    session_id = request.get_json()
+    session_id = request.get_data().decode()
     manager.exit(session_id)
