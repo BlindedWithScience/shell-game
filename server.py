@@ -62,6 +62,10 @@ class DataManager:
 
     def login(self, username: str, password: str) -> str | None:
         account = self.get_account(username)
+        
+        if account is None:
+            return None
+
         if account["password"] == password:
             session_id = str(uuid.uuid4())
 
@@ -107,7 +111,7 @@ class DataManager:
         array = self.accounts
         return [{"username": array[i]["username"], "score": array[i]["score"]} for i in range(n)]
 
-    def exit(self, session_id: str):
+    def end_session(self, session_id: str):
         for i in range(len(self.sessions)):
             if self.sessions[i]["session_id"] == session_id:
                 self.sessions.pop(i)
@@ -124,7 +128,7 @@ def register():
     return session_id
 
 
-@app.route("/login")
+@app.route("/login", methods=["POST"])
 def login():
     data = json.loads(request.get_data().decode())
     session_id = manager.login(data["username"], data["password"])
@@ -152,6 +156,6 @@ def leaderboard():
 
 
 @app.route("/exit")
-def exit():
+def end_session():
     session_id = request.get_data().decode()
-    manager.exit(session_id)
+    manager.end_session(session_id)
