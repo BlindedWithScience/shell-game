@@ -3,78 +3,136 @@ import json
 
 HOST = "http://127.0.0.1:5000"
 
-def register(username: str, password: str) -> str | None:
+def register(username: str, password: str) -> str | bool:
     data = {"username": username, "password": password}
-    response = requests.get(HOST + "/register", data=json.dumps(data)).text
+    response = requests.get(HOST + "/register", json=data).json()
     return response
 
 
-def login(username: str, password: str) -> str | None:
+def login(username: str, password: str) -> str | bool:
     data = {"username": username, "password": password}
-    response = requests.post(HOST + "/login", data=json.dumps(data)).text
-    print(response)
+    response = requests.get(HOST + "/login", json=data).json()
     return response
 
 
 def get_info(session_id: str) -> dict:
-    response = json.loads(requests.get(HOST + "/info", data=session_id).text)
+    response = requests.get(HOST + "/info", json=session_id).json()
     return response
 
 
 def leaderboard() -> list:
-    response = json.loads(requests.get(HOST + "/leaderboard").text)
+    response = requests.get(HOST + "/leaderboard").json()
     return response
 
 
 def end_session(session_id: str):
-    requests.get(HOST + "/exit", data=session_id)
+    requests.get(HOST + "/exit", json=session_id)
 
 
 def play(guess: int, stake: int, session_id: str):
-    sdata = json.dumps({"session_id": session_id, "stake": stake, "guess": guess})
-    #response = json.loads(requests.get(HOST + "/game", data=json.dumps(data)).text)
-    response = json.loads(requests.post(HOST + "/game", data=sdata).text)
-    print(response)
+    data = {"session_id": session_id, "stake": stake, "guess": guess}
+    response = requests.get(HOST + "/game", json=data).json()
     return response
 
 
-def main():
+def registration_process():
     while True:
-        print("To register, enter 'r'.")
-        print("To log in. enter 'l'.")
-        resp = input().lower()
+        print("Username and password must consist of latin letters and numbers only.")
+        username = input("Username: ")
+        password = input("Password: ")
+        session_id = register(username, password)
+        if not session_id:
+            print("Wrong name/password, or name already taken.")
+            print()
+        else:
+            return session_id
 
-        if resp != "r" and resp != "l":
+
+def logging_in_process():
+    while True:
+        username = input("Username: ")
+        password = input("Password: ")
+        session_id = login(username, password)
+        if not session_id:
+            print("Wrong name/password.")
+            print()
+        else:
+            return session_id
+
+
+def game_process(session_id):
+    score = get_info(session_id)["score"]
+    while True:
+        print("Enter your stake. (50<=, <=your score)")
+        try:
+            stake = int(input())
+        
+        except ValueError:
             print("Wrong input.")
             print()
             continue
 
-        break
-
+        if stake >= 50 and stake <= score:
+           break 
     print()
 
-    if resp == "r":
-        while True:
-            print("Username and password must consist of latin letters and numbers only.")
-            username = input("Username: ")
-            password = input("Password: ")
-            session_id = register(username, password)
-            if session_id is None:
-                print("Wrong name/password, or name already taken.")
-                print()
-            else:
-                break
+    while True:
+        print("Take a guess. Enter 1, 2 or 3.")
+        try:
+            guess = int(input())
+        
+        except ValueError:
+            print("Wrong input")
+            print()
+            continue
+        
+        if guess in [1,2,3]:
+            break
+    print()
 
-    if resp == "l":
-        while True:
-            username = input("Username: ")
-            password = input("Password: ")
-            session_id = login(username, password)
-            if session_id is None:
-                print("Wrong name/password.")
-                print()
-            else:
-                break
+    if play(guess, stake, session_id):
+        print("You won.")
+    else:
+        print("You lost.")
+
+
+def display_player_info(session_id):
+    user = get_info(session_id)
+    print(user["username"], user["score"])
+
+
+def display_leaderboard(_):
+    leaders = leaderboard()
+    for i in leaders:
+        print(i["username"], i["score"])
+
+
+actions1 = {
+        "reg": registration_process,
+        "log": logging_in_process
+}
+
+actions2 = {
+        "p": game_process,
+        "i": display_player_info,
+        "l": display_leaderboard
+} 
+
+
+def main():
+    while True:
+        print("To register, enter 'reg'.")
+        print("To log in. enter 'log'.")
+        resp = input().lower()
+
+        try:
+            session_id = actions1[resp]()
+            break
+
+        except KeyError:
+            print("Wrong input.")
+            print()
+
     print()
 
     while True:
@@ -84,72 +142,28 @@ def main():
         print("To exit, enter 'e'.")
         resp = input().lower()
 
-        if resp == "p":
-            score = get_info(session_id)["score"]
-            while True:
-                print("Enter your stake. (50<=, <=your score)")
-                try:
-                    stake = int(input())
-                
-                except Exception:
-                    print("Wrong input.")
-                    print()
-                    continue
-
-                if stake >= 50 and stake <= score:
-                   break 
+        try:
+            actions2[resp](session_id)
             print()
-
-            while True:
-                print("Take a guess. Enter 1, 2 or 3.")
-                try:
-                    guess = int(input())
-                
-                except Exception:
-                    print("Wrong input")
-                    print()
-                    continue
-                
-                if guess in [1,2,3]:
-                    break
-            print()
-
-            if play(guess, stake, session_id):
-                print("You won.")
+        except KeyError:
+            if resp == "e":
+                end_session(session_id)
+                break
             else:
-                print("You lost.")
+                print("Wrong input.")
 
-        elif resp == "l":
-            leaders = leaderboard()
-            for i in leaders:
-                print(i["username"], i["score"])
-        
-        elif resp == "i":
-            user = get_info(session_id)
-            print(user["username"], user["score"])
-
-        elif resp == "e":
-            end_session(session_id)
-            break
-
-        else:
-            print("Wrong input.")
-
-main()
-"""
 try:
     main()
 
 except KeyboardInterrupt:
     try:
         end_session(session_id)
-    except Exception:
-        pass
+    except Exception as e:
+        print(e)
 
 except Exception as e:
     print(e)
     try:
         end_session(session_id)
-    except Exception:
-        pass
-"""
+    except Exception as e:
+        print(e)
